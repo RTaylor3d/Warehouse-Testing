@@ -206,7 +206,7 @@ controls.maxPolarAngle = 0.95;
 controls.minPolarAngle = 0.95;
 controls.target = new THREE.Vector3(0, 0, 0);
 controls.update();
-
+/*
 // Post-processing pipeline
 const composer = new EffectComposer(renderer);
 composer.multisampling = renderer.capabilities.isWebGL2 ? 4 : 1; // multisample in post if available
@@ -232,13 +232,15 @@ window.addEventListener('resize', () => {
     ssaoPass.setSize(window.innerWidth, window.innerHeight);
     //bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
+*/
 
 //Render loop
 function render(){    
 
     controls.update();
     requestAnimationFrame(render);    
-    composer.render();
+    //composer.render();
+    renderer.render(scene, camera);
 }
 
 render();
