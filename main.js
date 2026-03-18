@@ -25,6 +25,34 @@ renderer.toneMapping = THREE.LinearToneMapping
 renderer.toneMappingExposure = 1.6;
 document.body.appendChild(renderer.domElement);
 
+// Lightweight FPS display
+const fpsDisplay = document.createElement('div');
+fpsDisplay.style.position = 'fixed';
+fpsDisplay.style.top = '10px';
+fpsDisplay.style.left = '10px';
+fpsDisplay.style.padding = '6px 10px';
+fpsDisplay.style.background = 'rgba(0,0,0,0.6)';
+fpsDisplay.style.color = '#f5f5f5';
+fpsDisplay.style.fontFamily = 'monospace';
+fpsDisplay.style.fontSize = '12px';
+fpsDisplay.style.zIndex = '10';
+fpsDisplay.textContent = 'FPS: --';
+document.body.appendChild(fpsDisplay);
+
+let fpsFrames = 0;
+let fpsLastTime = performance.now();
+
+function updateFps() {
+    fpsFrames += 1;
+    const now = performance.now();
+    if (now - fpsLastTime >= 500) { // update twice a second
+        const fps = Math.round((fpsFrames * 1000) / (now - fpsLastTime));
+        fpsDisplay.textContent = `FPS: ${fps}`;
+        fpsFrames = 0;
+        fpsLastTime = now;
+    }
+}
+
 // Set up Scene
 const scene = new THREE.Scene();
 const environmentTexture = new THREE.CubeTextureLoader().setPath('./env/').load(['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png']);
@@ -241,6 +269,7 @@ function render(){
 
     controls.update();
     requestAnimationFrame(render);    
+    updateFps();
     //composer.render();
     renderer.render(scene, camera);
 }
