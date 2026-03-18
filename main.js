@@ -20,7 +20,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xfaf7f3);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.LinearToneMapping
 renderer.toneMappingExposure = 1.6;
 document.body.appendChild(renderer.domElement);
@@ -210,7 +210,7 @@ light1.shadow.camera.bottom = -25;
 light1.shadow.camera.near = 5;
 light1.shadow.camera.far = 45;
 light1.shadow.mapSize.width = 1024;
-light1.shadow.mapSize.height = 2048;
+light1.shadow.mapSize.height = 1024;
 light1.shadow.bias = -0.0001
 
 scene.add(light1);
