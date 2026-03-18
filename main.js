@@ -14,7 +14,7 @@ const clock = new THREE.Clock();
 
 
 // Set up Renderer
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference: 'high-performance', precision: 'mediump'});
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xfaf7f3);
