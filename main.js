@@ -66,7 +66,7 @@ camera.position.set(35, 40, 35);
 const interactionManager = new InteractionManager(renderer, camera, renderer.domElement);
 
 const loader = new GLTFLoader().setPath('./models/');
-
+/*
 const boxTemplateNames = ['box1_colour1', 'box1_colour2', 'box1_colour3', 'box1_colour4', 'box1_colour5'];
 const palletTemplateName = 'pallet';
 const kitchenChairTemplateName = 'kitchen_chair';
@@ -99,6 +99,7 @@ function getFirstMeshByName(root, name) {
     });
     return mesh;
 }
+    */
 
 function buildInstancedMesh(templateMesh, markers) {
     if (!templateMesh || !markers.length) return null;
@@ -127,7 +128,7 @@ loader.load('warehouse_exp.glb', (gltf) => {
     meshLoaded = true;
 
     gltf.scene.updateWorldMatrix(true, true);
-
+/*
     const boxMarkers = [];
     const palletMarkers = [];
     const kitchenChairMarkers = [];
@@ -193,6 +194,7 @@ loader.load('warehouse_exp.glb', (gltf) => {
     if (kitchenChairInstanced) {
         scene.add(kitchenChairInstanced);
     }
+        */
 });
 
 // Add lights
