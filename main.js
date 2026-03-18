@@ -199,7 +199,7 @@ loader.load('warehouse_exp.glb', (gltf) => {
 const light1 = new THREE.DirectionalLight(0xFFE9D2, 5)
 light1.position.set(10, 20, -10);
 light1.castShadow = false;
-/*
+
 light1.shadow.normalBias = 0.02;
 light1.shadow.camera.left = -25;
 light1.shadow.camera.right = 25;
@@ -210,7 +210,7 @@ light1.shadow.camera.far = 45;
 light1.shadow.mapSize.width = 1024;
 light1.shadow.mapSize.height = 2048;
 light1.shadow.bias = -0.0001
-*/
+
 scene.add(light1);
 
 // Fill light on opposite side (cooler, no shadows)
@@ -236,7 +236,7 @@ controls.maxPolarAngle = 0.95;
 controls.minPolarAngle = 0.95;
 controls.target = new THREE.Vector3(0, 0, 0);
 controls.update();
-
+/*
 // Post-processing pipeline
 const composer = new EffectComposer(renderer);
 composer.multisampling = renderer.capabilities.isWebGL2 ? 4 : 1; // multisample in post if available
@@ -262,7 +262,7 @@ window.addEventListener('resize', () => {
     ssaoPass.setSize(window.innerWidth, window.innerHeight);
     //bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
-
+*/
 
 //Render loop
 function render(){    
@@ -270,8 +270,8 @@ function render(){
     controls.update();
     requestAnimationFrame(render);    
     updateFps();
-    composer.render();
-    //renderer.render(scene, camera);
+    //composer.render();
+    renderer.render(scene, camera);
 }
 
 render();
