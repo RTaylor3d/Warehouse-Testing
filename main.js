@@ -14,7 +14,7 @@ const clock = new THREE.Clock();
 
 
 // Set up Renderer
-const renderer = new THREE.WebGLRenderer({antialias:false, powerPreference: 'high-performance'});
+const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference: 'high-performance'});
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -239,7 +239,7 @@ controls.maxPolarAngle = 0.95;
 controls.minPolarAngle = 0.95;
 controls.target = new THREE.Vector3(0, 0, 0);
 controls.update();
-/*
+
 // Post-processing pipeline
 const composer = new EffectComposer(renderer);
 composer.multisampling = renderer.capabilities.isWebGL2 ? 4 : 1; // multisample in post if available
@@ -265,7 +265,7 @@ window.addEventListener('resize', () => {
     ssaoPass.setSize(window.innerWidth, window.innerHeight);
     //bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
-*/
+
 
 //Render loop
 function render(){    
@@ -273,8 +273,8 @@ function render(){
     controls.update();
     requestAnimationFrame(render);    
     updateFps();
-    //composer.render();
-    renderer.render(scene, camera);
+    composer.render();
+    //renderer.render(scene, camera);
 }
 
 render();
