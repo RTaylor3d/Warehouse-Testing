@@ -14,11 +14,12 @@ const clock = new THREE.Clock();
 
 
 // Set up Renderer
-const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference: 'high-performance', precision: 'mediump'});
+const renderer = new THREE.WebGLRenderer({antialias:false, powerPreference: 'high-performance'});
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xfaf7f3);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+renderer.setPixelRatio(isIOS ? 1 : window.devicePixelRatio * 1.5);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.LinearToneMapping
