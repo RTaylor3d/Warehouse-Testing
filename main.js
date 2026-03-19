@@ -21,8 +21,8 @@ renderer.setClearColor(0xfaf7f3);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
-renderer.toneMapping = THREE.LinearToneMapping
-renderer.toneMappingExposure = 1.6;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.5;
 document.body.appendChild(renderer.domElement);
 
 // Lightweight FPS display
@@ -57,10 +57,10 @@ function updateFps() {
 const scene = new THREE.Scene();
 const environmentTexture = new THREE.CubeTextureLoader().setPath('./env/').load(['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png']);
 scene.environment = environmentTexture;
-scene.environmentIntensity = 1.75;
+scene.environmentIntensity = 1.5;
 
 // Add camera
-const camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 200);
 camera.position.set(35, 40, 35);
 
 const interactionManager = new InteractionManager(renderer, camera, renderer.domElement);
@@ -199,7 +199,7 @@ loader.load('warehouse_exp.glb', (gltf) => {
 
 // Add lights
 const light1 = new THREE.DirectionalLight(0xFFE9D2, 5)
-light1.position.set(10, 20, -10);
+light1.position.set(5, 25, -5);
 light1.castShadow = true;
 
 light1.shadow.normalBias = 0.02;
@@ -216,7 +216,7 @@ light1.shadow.bias = -0.0001
 scene.add(light1);
 
 // Fill light on opposite side (cooler, no shadows)
-const light2 = new THREE.DirectionalLight(0xDDEBFF, .5);
+const light2 = new THREE.DirectionalLight(0xDDEBFF, 0.25);
 light2.position.set(-10, 15, 12);
 light2.castShadow = false;
 scene.add(light2);
@@ -239,6 +239,7 @@ controls.minPolarAngle = 0.95;
 controls.target = new THREE.Vector3(0, 0, 0);
 controls.update();
 
+/*
 // Post-processing pipeline
 const composer = new EffectComposer(renderer);
 composer.multisampling = renderer.capabilities.isWebGL2 ? 4 : 1; // multisample in post if available
@@ -264,7 +265,7 @@ window.addEventListener('resize', () => {
     ssaoPass.setSize(window.innerWidth, window.innerHeight);
     //bloomPass.setSize(window.innerWidth, window.innerHeight);
 });
-
+*/
 
 //Render loop
 function render(){    
@@ -272,8 +273,8 @@ function render(){
     controls.update();
     requestAnimationFrame(render);    
     updateFps();
-    composer.render();
-    //renderer.render(scene, camera);
+    //composer.render();
+    renderer.render(scene, camera);
 }
 
 render();
