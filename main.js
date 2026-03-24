@@ -122,7 +122,7 @@ function buildInstancedMesh(templateMesh, markers) {
     return instanced;
 }
 
-loader.load('warehouse_exp.glb', (gltf) => {
+loader.load('warehouse_exp.compressed.glb', (gltf) => {
     gltf.scene.traverse(function(child) {
         if (child.isMesh) {
             child.castShadow = true;

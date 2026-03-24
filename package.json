@@ -1,9 +1,13 @@
 {
+  "scripts": {
+    "compress-assets": "gltf-transform optimize ./public/models/warehouse_exp.glb ./public/models/warehouse_exp.compressed.glb --texture-compress webp"
+  },
   "dependencies": {
     "three": "^0.173.0",
     "three.interactive": "^1.8.0"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.0.0",
     "vite": "^6.1.1"
   }
 }
