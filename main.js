@@ -1,12 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { InteractionManager } from 'three.interactive';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { SSAOPass } from 'three/addons/postprocessing/SSAOPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
 // Set up variables
 var meshLoaded = false;
@@ -73,6 +69,8 @@ camera.position.set(35, 40, 35);
 const interactionManager = new InteractionManager(renderer, camera, renderer.domElement);
 
 const loader = new GLTFLoader().setPath('./models/');
+const ktx2Loader = new KTX2Loader().setTranscoderPath('./libs/basis/').detectSupport(renderer);
+loader.setKTX2Loader(ktx2Loader);
 
 const boxTemplateNames = ['box1_colour1', 'box1_colour2', 'box1_colour3', 'box1_colour4', 'box1_colour5'];
 const palletTemplateName = 'pallet';
