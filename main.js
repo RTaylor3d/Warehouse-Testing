@@ -28,31 +28,115 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.5;
 document.body.appendChild(renderer.domElement);
 
-// Lightweight FPS display
+// Advanced performance monitoring
+class PerformanceMonitor {
+    constructor() {
+        this.frameTimes = [];
+        this.maxSamples = 300;
+        this.lastFrameTime = performance.now();
+        this.gcPauses = [];
+        this.touchEvents = 0;
+    }
+    
+    recordFrame() {
+        const now = performance.now();
+        const deltaMs = now - this.lastFrameTime;
+        this.frameTimes.push(deltaMs);
+        if (this.frameTimes.length > this.maxSamples) {
+            this.frameTimes.shift();
+        }
+        this.lastFrameTime = now;
+        
+        // Detect GC pauses (frames > 25ms are suspect)
+        if (deltaMs > 25) {
+            this.gcPauses.push({ time: now, duration: deltaMs });
+            if (this.gcPauses.length > 50) this.gcPauses.shift();
+        }
+    }
+    
+    getStats() {
+        if (this.frameTimes.length === 0) return null;
+        const times = [...this.frameTimes].sort((a, b) => a - b);
+        const avg = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+        const max = Math.max(...this.frameTimes);
+        const min = Math.min(...this.frameTimes);
+        const p95 = times[Math.floor(times.length * 0.95)];
+        const fps = Math.round(1000 / avg);
+        return { avg, max, min, p95, fps, samples: this.frameTimes.length };
+    }
+    
+    recordTouch() {
+        this.touchEvents++;
+    }
+    
+    export() {
+        return {
+            stats: this.getStats(),
+            frameTimes: this.frameTimes.slice(),
+            gcPauses: this.gcPauses.slice(),
+            memory: performance.memory ? {
+                usedJSHeapSize: (performance.memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB',
+                totalJSHeapSize: (performance.memory.totalJSHeapSize / 1048576).toFixed(2) + ' MB',
+                jsHeapSizeLimit: (performance.memory.jsHeapSizeLimit / 1048576).toFixed(2) + ' MB'
+            } : null,
+            touchEvents: this.touchEvents
+        };
+    }
+}
+
+const perfMonitor = new PerformanceMonitor();
+
+// Advanced FPS + frametime display
 const fpsDisplay = document.createElement('div');
 fpsDisplay.style.position = 'fixed';
 fpsDisplay.style.top = '10px';
 fpsDisplay.style.left = '10px';
-fpsDisplay.style.padding = '6px 10px';
-fpsDisplay.style.background = 'rgba(0,0,0,0.6)';
+fpsDisplay.style.padding = '8px 12px';
+fpsDisplay.style.background = 'rgba(0,0,0,0.7)';
 fpsDisplay.style.color = '#f5f5f5';
 fpsDisplay.style.fontFamily = 'monospace';
-fpsDisplay.style.fontSize = '12px';
+fpsDisplay.style.fontSize = '11px';
 fpsDisplay.style.zIndex = '10';
-fpsDisplay.textContent = 'FPS: --';
+fpsDisplay.style.lineHeight = '1.4';
+fpsDisplay.style.whiteSpace = 'pre';
+fpsDisplay.textContent = 'FPS: --\nAvg: -- ms\nMax: -- ms\nP95: -- ms';
 document.body.appendChild(fpsDisplay);
 
-let fpsFrames = 0;
-let fpsLastTime = performance.now();
+// Export button for performance data
+const exportBtn = document.createElement('button');
+exportBtn.textContent = 'Export Perf Data';
+exportBtn.style.position = 'fixed';
+exportBtn.style.bottom = '10px';
+exportBtn.style.left = '10px';
+exportBtn.style.padding = '8px 12px';
+exportBtn.style.background = '#333';
+exportBtn.style.color = '#fff';
+exportBtn.style.border = '1px solid #666';
+exportBtn.style.borderRadius = '4px';
+exportBtn.style.cursor = 'pointer';
+exportBtn.style.fontSize = '12px';
+exportBtn.style.zIndex = '10';
+exportBtn.onclick = () => {
+    const data = perfMonitor.export();
+    console.log('Performance Data:', data);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `perf_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+};
+document.body.appendChild(exportBtn);
 
-function updateFps() {
-    fpsFrames += 1;
-    const now = performance.now();
-    if (now - fpsLastTime >= 500) { // update twice a second
-        const fps = Math.round((fpsFrames * 1000) / (now - fpsLastTime));
-        fpsDisplay.textContent = `FPS: ${fps}`;
-        fpsFrames = 0;
-        fpsLastTime = now;
+let updateCounter = 0;
+function updateMetrics() {
+    updateCounter++;
+    if (updateCounter % 10 === 0) { // Update display every 10 frames
+        const stats = perfMonitor.getStats();
+        if (stats) {
+            fpsDisplay.textContent = `FPS: ${stats.fps}\nAvg: ${stats.avg.toFixed(1)} ms\nMax: ${stats.max.toFixed(1)} ms\nP95: ${stats.p95.toFixed(1)} ms`;
+        }
     }
 }
 
@@ -305,8 +389,9 @@ function render(){
     }
 
     controls.update();
-    requestAnimationFrame(render);    
-    updateFps();
+    requestAnimationFrame(render);
+    perfMonitor.recordFrame();
+    updateMetrics();
     //composer.render();
     renderer.render(scene, camera);
 }
