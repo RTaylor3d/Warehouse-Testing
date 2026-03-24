@@ -220,8 +220,7 @@ loader.load('warehouse_exp.glb', (gltf) => {
 // Add lights
 const light1 = new THREE.DirectionalLight(0xFFE9D2, 5)
 light1.position.set(5, 25, -5);
-light1.castShadow = false;
-/*
+light1.castShadow = true;
 light1.shadow.normalBias = 0.02;
 light1.shadow.camera.left = -25;
 light1.shadow.camera.right = 25;
@@ -229,10 +228,10 @@ light1.shadow.camera.top = 25;
 light1.shadow.camera.bottom = -25;
 light1.shadow.camera.near = 5;
 light1.shadow.camera.far = 45;
-light1.shadow.mapSize.width = 1024;
-light1.shadow.mapSize.height = 1024;
+light1.shadow.mapSize.width = 512;
+light1.shadow.mapSize.height = 512;
 light1.shadow.bias = -0.0001
-*/
+
 scene.add(light1);
 
 // Fill light on opposite side (cooler, no shadows)
