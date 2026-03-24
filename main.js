@@ -12,6 +12,13 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 var meshLoaded = false;
 const clock = new THREE.Clock();
 
+// Pallet turner spin state
+let palletTurnerSpinState = {
+    object: null,
+    angularVelocity: 0, // radians per second
+    deceleration: 2.5 // deceleration factor (radians per second squared)
+};
+
 
 // Set up Renderer
 const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference: 'high-performance'});
@@ -194,6 +201,21 @@ loader.load('warehouse_exp.glb', (gltf) => {
     if (kitchenChairInstanced) {
         scene.add(kitchenChairInstanced);
     }
+
+    // Set up pallet turner interaction
+    const palletTurner = gltf.scene.getObjectByName('palletTurner');
+    if (palletTurner) {
+        palletTurnerSpinState.object = palletTurner;
+        
+        // Register with InteractionManager and add click handler
+        interactionManager.add(palletTurner);
+        palletTurner.addEventListener('click', () => {
+            // Apply initial spin velocity (3 rotations per second)
+            palletTurnerSpinState.angularVelocity = Math.PI * 3;
+        });
+    } else {
+        console.warn('palletTurner object not found in scene');
+    }
         
 });
 
@@ -216,7 +238,7 @@ light1.shadow.bias = -0.0001
 scene.add(light1);
 
 // Fill light on opposite side (cooler, no shadows)
-const light2 = new THREE.DirectionalLight(0xDDEBFF, 0.25);
+const light2 = new THREE.DirectionalLight(0xDDEBFF, 0.5);
 light2.position.set(-10, 15, 12);
 light2.castShadow = false;
 scene.add(light2);
@@ -269,6 +291,21 @@ window.addEventListener('resize', () => {
 
 //Render loop
 function render(){    
+    const deltaTime = clock.getDelta();
+
+    // Update pallet turner spin with deceleration
+    if (palletTurnerSpinState.object && palletTurnerSpinState.angularVelocity !== 0) {
+        // Apply deceleration
+        palletTurnerSpinState.angularVelocity -= palletTurnerSpinState.deceleration * deltaTime;
+        
+        // Stop spinning if velocity is very small
+        if (palletTurnerSpinState.angularVelocity < 0.01) {
+            palletTurnerSpinState.angularVelocity = 0;
+        }
+        
+        // Rotate the object around Y axis
+        palletTurnerSpinState.object.rotation.y += palletTurnerSpinState.angularVelocity * deltaTime;
+    }
 
     controls.update();
     requestAnimationFrame(render);    
