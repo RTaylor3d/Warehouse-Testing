@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { InteractionManager } from 'three.interactive';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -73,6 +74,10 @@ camera.position.set(35, 40, 35);
 const interactionManager = new InteractionManager(renderer, camera, renderer.domElement);
 
 const loader = new GLTFLoader().setPath('./models/');
+// Set up meshopt decoder for compressed models
+MeshoptDecoder.ready.then(() => {
+    loader.setMeshoptDecoder(MeshoptDecoder);
+});
 
 const boxTemplateNames = ['box1_colour1', 'box1_colour2', 'box1_colour3', 'box1_colour4', 'box1_colour5'];
 const palletTemplateName = 'pallet';
