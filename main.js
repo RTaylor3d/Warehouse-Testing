@@ -38,15 +38,23 @@ class PerformanceMonitor {
         this.lastFrameTime = performance.now();
         this.gcPauses = [];
         this.touchEvents = 0;
+        this.sampleRate = 3; // Only record every 3rd frame to reduce memory churn
+        this.frameCounter = 0;
     }
     
     recordFrame() {
         const now = performance.now();
         const deltaMs = now - this.lastFrameTime;
-        this.frameTimes.push(deltaMs);
-        if (this.frameTimes.length > this.maxSamples) {
-            this.frameTimes.shift();
+        
+        // Only sample every Nth frame to reduce GC pressure
+        this.frameCounter++;
+        if (this.frameCounter % this.sampleRate === 0) {
+            this.frameTimes.push(deltaMs);
+            if (this.frameTimes.length > this.maxSamples) {
+                this.frameTimes.shift();
+            }
         }
+        
         this.lastFrameTime = now;
         
         // Detect GC pauses (frames > 25ms are suspect)
@@ -81,14 +89,16 @@ class PerformanceMonitor {
                 totalJSHeapSize: (performance.memory.totalJSHeapSize / 1048576).toFixed(2) + ' MB',
                 jsHeapSizeLimit: (performance.memory.jsHeapSizeLimit / 1048576).toFixed(2) + ' MB'
             } : null,
-            touchEvents: this.touchEvents
+            touchEvents: this.touchEvents,
+            sampleRate: this.sampleRate
         };
     }
 }
 
 const perfMonitor = new PerformanceMonitor();
 
-// Advanced FPS + frametime display
+// Lightweight FPS + frametime display (disabled on mobile to reduce allocations)
+const showPerfMonitor = !isMobile;
 const fpsDisplay = document.createElement('div');
 fpsDisplay.style.position = 'fixed';
 fpsDisplay.style.top = '10px';
@@ -101,6 +111,7 @@ fpsDisplay.style.fontSize = '11px';
 fpsDisplay.style.zIndex = '10';
 fpsDisplay.style.lineHeight = '1.4';
 fpsDisplay.style.whiteSpace = 'pre';
+fpsDisplay.style.display = showPerfMonitor ? 'block' : 'none';
 fpsDisplay.textContent = 'FPS: --\nAvg: -- ms\nMax: -- ms\nP95: -- ms';
 document.body.appendChild(fpsDisplay);
 
@@ -133,6 +144,7 @@ document.body.appendChild(exportBtn);
 
 let updateCounter = 0;
 function updateMetrics() {
+    if (!showPerfMonitor) return; // Skip on mobile
     updateCounter++;
     if (updateCounter % 10 === 0) { // Update display every 10 frames
         const stats = perfMonitor.getStats();
@@ -335,7 +347,7 @@ scene.add(light2);
 // Controls for the camera orbit
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.03; // Reduced from default 0.05 to save allocations on iPad
+controls.dampingFactor = isMobile ? 0.015 : 0.03; // Ultra-low on iPad to minimize allocations
 controls.enablePan = true;
 controls.autoRotate = false;
 controls.maxDistance = 150;
@@ -396,8 +408,10 @@ function render(){
 
     controls.update();
     requestAnimationFrame(render);
-    perfMonitor.recordFrame();
-    updateMetrics();
+    if (showPerfMonitor) {
+        perfMonitor.recordFrame();
+        updateMetrics();
+    }
     //composer.render();
     renderer.render(scene, camera);
 }
