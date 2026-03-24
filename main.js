@@ -18,7 +18,10 @@ let palletTurnerSpinState = {
 
 // Set up Renderer
 // Disable antialias on mobile to reduce GPU pressure and memory allocation
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                 (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
+                 /^((?!chrome|android).)*safari/i.test(navigator.userAgent) && screen.width <= 1366;
+console.log('[Device Detection] isMobile:', isMobile, 'userAgent:', navigator.userAgent);
 const renderer = new THREE.WebGLRenderer({antialias: !isMobile, powerPreference: 'high-performance'});
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -98,7 +101,8 @@ class PerformanceMonitor {
 const perfMonitor = new PerformanceMonitor();
 
 // Lightweight FPS + frametime display (disabled on mobile to reduce allocations)
-const showPerfMonitor = !isMobile;
+let showPerfMonitor = !isMobile;
+console.log('[Perf Monitor] showPerfMonitor:', showPerfMonitor);
 const fpsDisplay = document.createElement('div');
 fpsDisplay.style.position = 'fixed';
 fpsDisplay.style.top = '10px';
@@ -114,6 +118,27 @@ fpsDisplay.style.whiteSpace = 'pre';
 fpsDisplay.style.display = showPerfMonitor ? 'block' : 'none';
 fpsDisplay.textContent = 'FPS: --\nAvg: -- ms\nMax: -- ms\nP95: -- ms';
 document.body.appendChild(fpsDisplay);
+
+// Toggle button for perf monitor
+const togglePerfBtn = document.createElement('button');
+togglePerfBtn.textContent = 'Toggle Perf Monitor';
+togglePerfBtn.style.position = 'fixed';
+togglePerfBtn.style.top = '10px';
+togglePerfBtn.style.right = '10px';
+togglePerfBtn.style.padding = '8px 12px';
+togglePerfBtn.style.background = '#333';
+togglePerfBtn.style.color = '#fff';
+togglePerfBtn.style.border = '1px solid #666';
+togglePerfBtn.style.borderRadius = '4px';
+togglePerfBtn.style.cursor = 'pointer';
+togglePerfBtn.style.fontSize = '12px';
+togglePerfBtn.style.zIndex = '10';
+togglePerfBtn.onclick = () => {
+    showPerfMonitor = !showPerfMonitor;
+    fpsDisplay.style.display = showPerfMonitor ? 'block' : 'none';
+    console.log('[Perf Monitor] Toggled to:', showPerfMonitor);
+};
+document.body.appendChild(togglePerfBtn);
 
 // Export button for performance data
 const exportBtn = document.createElement('button');
