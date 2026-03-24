@@ -12,7 +12,7 @@ const clock = new THREE.Clock();
 let palletTurnerSpinState = {
     object: null,
     angularVelocity: 0, // radians per second
-    deceleration: 2.5 // deceleration factor (radians per second squared)
+    deceleration: 5 // deceleration factor (radians per second squared)
 };
 
 
@@ -22,11 +22,11 @@ const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/
                  (navigator.maxTouchPoints && navigator.maxTouchPoints > 2) ||
                  /^((?!chrome|android).)*safari/i.test(navigator.userAgent) && screen.width <= 1366;
 console.log('[Device Detection] isMobile:', isMobile, 'userAgent:', navigator.userAgent);
-const renderer = new THREE.WebGLRenderer({antialias: !isMobile, powerPreference: 'high-performance'});
+const renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: 'high-performance'});
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xfaf7f3);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
