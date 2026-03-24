@@ -23,7 +23,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xfaf7f3);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.VSMShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.5;
 document.body.appendChild(renderer.domElement);
