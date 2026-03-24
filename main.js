@@ -17,7 +17,9 @@ let palletTurnerSpinState = {
 
 
 // Set up Renderer
-const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference: 'high-performance'});
+// Disable antialias on mobile to reduce GPU pressure and memory allocation
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+const renderer = new THREE.WebGLRenderer({antialias: !isMobile, powerPreference: 'high-performance'});
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xfaf7f3);
@@ -333,6 +335,7 @@ scene.add(light2);
 // Controls for the camera orbit
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.dampingFactor = 0.03; // Reduced from default 0.05 to save allocations on iPad
 controls.enablePan = true;
 controls.autoRotate = false;
 controls.maxDistance = 150;
@@ -371,6 +374,9 @@ window.addEventListener('resize', () => {
 */
 
 //Render loop
+let lastFrameTime = 0;
+const targetFrameTime = isMobile ? 17 : 16; // Target 60fps but allow slight variance on mobile
+
 function render(){    
     const deltaTime = clock.getDelta();
 
