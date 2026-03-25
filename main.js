@@ -26,7 +26,7 @@ const renderer = new THREE.WebGLRenderer({antialias: true, powerPreference: 'hig
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0xfaf7f3);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
