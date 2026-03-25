@@ -372,7 +372,7 @@ scene.add(light2);
 // Controls for the camera orbit
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = isMobile ? 0.015 : 0.03; // Ultra-low on iPad to minimize allocations
+controls.dampingFactor = isMobile ? 0.15 : 0.15; // Ultra-low on iPad to minimize allocations
 controls.enablePan = true;
 controls.autoRotate = false;
 controls.maxDistance = 150;
