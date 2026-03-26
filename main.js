@@ -191,6 +191,10 @@ camera.position.set(35, 40, 35);
 
 const interactionManager = new InteractionManager(renderer, camera, renderer.domElement);
 
+// Animation mixer and clips
+let mixer = null;
+const clipActions = [];
+
 const loader = new GLTFLoader().setPath('./models/');
 const ktx2Loader = new KTX2Loader().setTranscoderPath('./libs/basis/').detectSupport(renderer);
 loader.setKTX2Loader(ktx2Loader);
@@ -254,6 +258,20 @@ loader.load('warehouse_exp.glb', (gltf) => {
     const mesh = gltf.scene;
     scene.add(mesh);
     meshLoaded = true;
+
+    // Set up animations BEFORE updating world matrices
+    if (gltf.animations && gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(gltf.scene);
+        gltf.animations.forEach((clip) => {
+            const action = mixer.clipAction(clip);
+            action.play();
+            clipActions.push(action);
+            console.log(`[Animation] Playing: ${clip.name}`);
+        });
+        console.log(`[Animation] Total animations: ${gltf.animations.length}`);
+    } else {
+        console.log('[Animation] No animations found in model');
+    }
 
     gltf.scene.updateWorldMatrix(true, true);
 
@@ -351,8 +369,8 @@ light1.shadow.camera.top = 25;
 light1.shadow.camera.bottom = -25;
 light1.shadow.camera.near = 5;
 light1.shadow.camera.far = 45;
-light1.shadow.mapSize.width = 512;
-light1.shadow.mapSize.height = 512;
+light1.shadow.mapSize.width = 1024;
+light1.shadow.mapSize.height = 1024;
 light1.shadow.bias = -0.0001
 
 scene.add(light1);
@@ -416,6 +434,11 @@ const targetFrameTime = isMobile ? 17 : 16; // Target 60fps but allow slight var
 
 function render(){    
     const deltaTime = clock.getDelta();
+
+    // Update animations every frame
+    if (mixer) {
+        mixer.update(deltaTime);
+    }
 
     // Update pallet turner spin with deceleration
     if (palletTurnerSpinState.object && palletTurnerSpinState.angularVelocity !== 0) {
