@@ -30,7 +30,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.5;
+renderer.toneMappingExposure = 1.4;
 document.body.appendChild(renderer.domElement);
 
 // Advanced performance monitoring
@@ -183,7 +183,7 @@ function updateMetrics() {
 const scene = new THREE.Scene();
 const environmentTexture = new THREE.CubeTextureLoader().setPath('./env/').load(['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png']);
 scene.environment = environmentTexture;
-scene.environmentIntensity = 1.5;
+scene.environmentIntensity = 1.1;
 
 // Add white fog
 const fogColor = 0xffffff;
@@ -261,6 +261,21 @@ loader.load('warehouse_exp.glb', (gltf) => {
     });
 
     const mesh = gltf.scene;
+    
+    // Disable shadows on background_assets AFTER global enable, traversing all children
+    const bgAssets = mesh.getObjectByName('background_assets');
+    if (bgAssets) {
+        bgAssets.traverse(function(child) {
+            if (child.isMesh) {
+                child.castShadow = false;
+                child.receiveShadow = false;
+            }
+        });
+        console.log('[Shadows] Disabled shadow casting AND receiving for background_assets');
+    } else {
+        console.warn('[Shadows] background_assets object not found');
+    }
+    
     scene.add(mesh);
     meshLoaded = true;
 
@@ -365,16 +380,16 @@ loader.load('warehouse_exp.glb', (gltf) => {
 
 // Add lights
 const light1 = new THREE.DirectionalLight(0xFFE9D2, 5)
-light1.position.set(5, 25, -5);
+light1.position.set(12, 20, -12);
 light1.castShadow = true;
 light1.shadow.normalBias = 0.02;
-light1.shadow.camera.left = -25;
-light1.shadow.camera.right = 25;
-light1.shadow.camera.top = 25;
-light1.shadow.camera.bottom = -25;
-light1.shadow.camera.near = 5;
-light1.shadow.camera.far = 45;
-light1.shadow.mapSize.width = 512;
+light1.shadow.camera.left = -36;
+light1.shadow.camera.right = 35;
+light1.shadow.camera.top = 35;
+light1.shadow.camera.bottom = -30;
+light1.shadow.camera.near = 1;
+light1.shadow.camera.far = 51;
+light1.shadow.mapSize.width = 1024;
 light1.shadow.mapSize.height = 512;
 light1.shadow.bias = -0.0001
 
