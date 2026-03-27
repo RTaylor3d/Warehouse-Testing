@@ -369,8 +369,8 @@ light1.shadow.camera.top = 25;
 light1.shadow.camera.bottom = -25;
 light1.shadow.camera.near = 5;
 light1.shadow.camera.far = 45;
-light1.shadow.mapSize.width = 1024;
-light1.shadow.mapSize.height = 1024;
+light1.shadow.mapSize.width = 512;
+light1.shadow.mapSize.height = 512;
 light1.shadow.bias = -0.0001
 
 scene.add(light1);
