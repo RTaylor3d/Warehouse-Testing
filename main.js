@@ -185,9 +185,14 @@ const environmentTexture = new THREE.CubeTextureLoader().setPath('./env/').load(
 scene.environment = environmentTexture;
 scene.environmentIntensity = 1.5;
 
+// Add white fog
+const fogColor = 0xffffff;
+scene.fog = new THREE.Fog(fogColor, 80, 200); // (color, near, far)
+scene.background = new THREE.Color(fogColor);
+
 // Add camera
-const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(35, 40, 35);
+const camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 400);
+camera.position.set(35, 15, 35);
 
 const interactionManager = new InteractionManager(renderer, camera, renderer.domElement);
 
@@ -395,8 +400,8 @@ controls.enablePan = true;
 controls.autoRotate = false;
 controls.maxDistance = 150;
 controls.minDistance = 3;
-controls.maxPolarAngle = 0.95;
-controls.minPolarAngle = 0.95;
+controls.maxPolarAngle = 0.85;
+controls.minPolarAngle = 0.85;
 controls.target = new THREE.Vector3(0, 0, 0);
 controls.update();
 
