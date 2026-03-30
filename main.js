@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { InteractionManager } from 'three.interactive';
+import { gsap } from 'gsap';
 
 // Set up variables
 var meshLoaded = false;
@@ -196,9 +197,292 @@ camera.position.set(35, 15, 35);
 
 const interactionManager = new InteractionManager(renderer, camera, renderer.domElement);
 
+// Hotspot system
+class HotspotManager {
+    constructor(camera, scene) {
+        this.camera = camera;
+        this.controls = null; // Will be set after controls are created
+        this.scene = scene;
+        this.hotspots = new Map();
+        this.isAnimating = false;
+        this.hotspotsEnabled = true; // Disable hotspots while animating
+        this.lastCameraPos = new THREE.Vector3();
+        this.lastCameraTarget = new THREE.Vector3();
+        this.currentHotspotId = null;
+        this.skipControlsUpdate = false; // Flag to prevent controls from interfering during animation
+        
+        // Listen for R key to return
+        window.addEventListener('keydown', (e) => this.handleKeyPress(e));
+    }
+    
+    setControls(controls) {
+        this.controls = controls;
+    }
+    
+    registerHotspot(id, clickGeometry, targetObj, camPos1) {
+        this.hotspots.set(id, { clickGeometry, targetObj, camPos1 });
+        
+        // Disable shadows on click geometry (invisible interaction meshes)
+        clickGeometry.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = false;
+                child.receiveShadow = false;
+                console.log(`[Hotspots] Disabled shadows on ${id} mesh: ${child.name || 'unnamed'}`);
+            }
+        });
+        
+        // Debug information about the click geometry
+        console.log(`[Hotspots] Registering ${id}:`, {
+            isObject3D: clickGeometry instanceof THREE.Object3D,
+            type: clickGeometry.type,
+            position: clickGeometry.position,
+            visible: clickGeometry.visible,
+            hasGeometry: clickGeometry.geometry ? true : false,
+            hasMaterial: clickGeometry.material ? true : false,
+            children: clickGeometry.children.length
+        });
+        
+        // Add click geometry (and all its children if it's a group) to interaction manager
+        // If it's a mesh with geometry, add it directly
+        if (clickGeometry.geometry) {
+            interactionManager.add(clickGeometry);
+            clickGeometry.addEventListener('click', () => {
+                if (!this.hotspotsEnabled) {
+                    console.log(`[Hotspots] Click ignored on ${id} - hotspots disabled`);
+                    return;
+                }
+                console.log(`[Hotspots] Click detected on ${id}`);
+                this.activateHotspot(id);
+            });
+        } else {
+            // If it's a group/empty object, try to add all mesh children
+            clickGeometry.traverse((child) => {
+                if (child.isMesh && child.geometry) {
+                    interactionManager.add(child);
+                    child.addEventListener('click', () => {
+                        if (!this.hotspotsEnabled) {
+                            console.log(`[Hotspots] Click ignored on ${id} (via child mesh) - hotspots disabled`);
+                            return;
+                        }
+                        console.log(`[Hotspots] Click detected on ${id} (via child mesh)`);
+                        this.activateHotspot(id);
+                    });
+                }
+            });
+            
+            // Also add the parent group itself to catch clicks
+            interactionManager.add(clickGeometry);
+            clickGeometry.addEventListener('click', () => {
+                if (!this.hotspotsEnabled) {
+                    console.log(`[Hotspots] Click ignored on ${id} (via parent) - hotspots disabled`);
+                    return;
+                }
+                console.log(`[Hotspots] Click detected on ${id} (via parent)`);
+                this.activateHotspot(id);
+            });
+        }
+        
+        console.log(`[Hotspots] Registered hotspot: ${id} with InteractionManager`);
+    }
+    
+    activateHotspot(id) {
+        console.log(`[Hotspots] activateHotspot called: id=${id}, isAnimating=${this.isAnimating}, hasHotspot=${this.hotspots.has(id)}, hasControls=${!!this.controls}`);
+        
+        if (this.isAnimating || !this.hotspots.has(id) || !this.controls) {
+            console.warn(`[Hotspots] Early return - isAnimating=${this.isAnimating}, hasHotspot=${this.hotspots.has(id)}, hasControls=${!!this.controls}`);
+            return;
+        }
+        
+        const hotspot = this.hotspots.get(id);
+        this.currentHotspotId = id;
+        this.isAnimating = true;
+        this.hotspotsEnabled = false; // Disable all hotspots while animating
+        this.skipControlsUpdate = true; // Prevent controls from interfering
+        
+        console.log(`[Hotspots] Activated hotspot: ${id} - hotspots disabled`);
+        
+        console.log(`[Hotspots] Got hotspot object:`, {
+            hasClickGeometry: !!hotspot.clickGeometry,
+            hasTargetObj: !!hotspot.targetObj,
+            hasCamPos1: !!hotspot.camPos1,
+            hasCamPos2: !!hotspot.camPos2
+        });
+        
+        // Record current camera state
+        this.lastCameraPos.copy(this.camera.position);
+        this.lastCameraTarget.copy(this.controls.target);
+        
+        console.log(`[Hotspots] Recorded camera state:`, {
+            pos: { x: this.lastCameraPos.x.toFixed(2), y: this.lastCameraPos.y.toFixed(2), z: this.lastCameraPos.z.toFixed(2) },
+            target: { x: this.lastCameraTarget.x.toFixed(2), y: this.lastCameraTarget.y.toFixed(2), z: this.lastCameraTarget.z.toFixed(2) }
+        });
+        
+        // Disable controls
+        this.controls.enableRotate = false;
+        this.controls.enableZoom = false;
+        this.controls.enablePan = false;
+        
+        console.log(`[Hotspots] Activated hotspot: ${id}, disabling controls`);
+        
+        // Animate camera target smoothly
+        const startTarget = { 
+            x: this.controls.target.x, 
+            y: this.controls.target.y, 
+            z: this.controls.target.z 
+        };
+        const endTarget = hotspot.targetObj.position;
+        
+        console.log(`[Hotspots] Animating target from:`, {
+            x: startTarget.x.toFixed(2),
+            y: startTarget.y.toFixed(2),
+            z: startTarget.z.toFixed(2)
+        }, `to:`, {
+            x: endTarget.x.toFixed(2),
+            y: endTarget.y.toFixed(2),
+            z: endTarget.z.toFixed(2)
+        });
+        
+        gsap.to(startTarget, {
+            x: endTarget.x,
+            y: endTarget.y,
+            z: endTarget.z,
+            duration: 1.5,
+            ease: 'power2.inOut',
+            onUpdate: () => {
+                this.controls.target.set(startTarget.x, startTarget.y, startTarget.z);
+            }
+        });
+        
+        // Animate to camPos1
+        console.log(`[Hotspots] Starting animation to camPos1...`);
+        this.animateToCamPos(hotspot.camPos1, 1.5, () => {
+            console.log(`[Hotspots] Arrived at ${id} camPos1. Waiting for R keypress to return...`);
+            this.isAnimating = false; // Allow R key return now
+            this.skipControlsUpdate = false; // Allow controls update again
+        });
+    }
+    
+    animateToCamPos(targetPos, duration, onComplete) {
+        console.log(`[Hotspots] Starting camera animation to:`, {
+            x: targetPos.position.x,
+            y: targetPos.position.y,
+            z: targetPos.position.z
+        }, `from:`, {
+            x: this.camera.position.x,
+            y: this.camera.position.y,
+            z: this.camera.position.z
+        });
+        
+        return gsap.to(this.camera.position, {
+            x: targetPos.position.x,
+            y: targetPos.position.y,
+            z: targetPos.position.z,
+            duration: duration,
+            ease: 'power2.inOut',
+            paused: false,
+            onUpdate: () => {
+                console.log(`[Hotspots] Camera pos during anim:`, {
+                    x: this.camera.position.x.toFixed(2),
+                    y: this.camera.position.y.toFixed(2),
+                    z: this.camera.position.z.toFixed(2)
+                });
+                if (this.controls) this.controls.update();
+            },
+            onComplete: () => {
+                console.log(`[Hotspots] Animation complete to:`, {
+                    x: this.camera.position.x.toFixed(2),
+                    y: this.camera.position.y.toFixed(2),
+                    z: this.camera.position.z.toFixed(2)
+                });
+                if (onComplete) onComplete();
+            }
+        });
+    }
+    
+    returnToLastPosition() {
+        console.log(`[Hotspots] returnToLastPosition called - isAnimating=${this.isAnimating}, currentHotspotId=${this.currentHotspotId}, hasControls=${!!this.controls}`);
+        
+        if (this.isAnimating || !this.currentHotspotId || !this.controls) {
+            console.warn(`[Hotspots] Early return from returnToLastPosition - isAnimating=${this.isAnimating}, currentHotspotId=${this.currentHotspotId}, hasControls=${!!this.controls}`);
+            return;
+        }
+        
+        this.isAnimating = true;
+        this.skipControlsUpdate = true; // Prevent controls from interfering during return
+        console.log(`[Hotspots] Returning camera to previous position...`);
+        
+        // Animate target back to original position
+        const currentTarget = { 
+            x: this.controls.target.x, 
+            y: this.controls.target.y, 
+            z: this.controls.target.z 
+        };
+        const originalTarget = this.lastCameraTarget;
+        
+        console.log(`[Hotspots] Animating target back from:`, {
+            x: currentTarget.x.toFixed(2),
+            y: currentTarget.y.toFixed(2),
+            z: currentTarget.z.toFixed(2)
+        }, `to:`, {
+            x: originalTarget.x.toFixed(2),
+            y: originalTarget.y.toFixed(2),
+            z: originalTarget.z.toFixed(2)
+        });
+        
+        gsap.to(currentTarget, {
+            x: originalTarget.x,
+            y: originalTarget.y,
+            z: originalTarget.z,
+            duration: 1.5,
+            ease: 'power2.inOut',
+            onUpdate: () => {
+                this.controls.target.set(currentTarget.x, currentTarget.y, currentTarget.z);
+            }
+        });
+        
+        // Animate back to last camera position
+        gsap.to(this.camera.position, {
+            x: this.lastCameraPos.x,
+            y: this.lastCameraPos.y,
+            z: this.lastCameraPos.z,
+            duration: 1.5,
+            ease: 'power2.inOut',
+            onUpdate: () => {
+                if (this.controls) this.controls.update();
+            },
+            onComplete: () => {
+                // Re-enable controls
+                this.controls.enableRotate = true;
+                this.controls.enableZoom = true;
+                this.controls.enablePan = true;
+                
+                // Re-enable controls update and hotspots
+                this.skipControlsUpdate = false;
+                this.hotspotsEnabled = true; // Re-enable hotspots
+                this.controls.update();
+                
+                this.isAnimating = false;
+                this.currentHotspotId = null;
+                
+                console.log('[Hotspots] Camera returned, controls re-enabled, hotspots re-enabled');
+            }
+        });
+    }
+    
+    handleKeyPress(event) {
+        if (event.key.toLowerCase() === 'r') {
+            console.log(`[Hotspots] R key pressed - attempting return. isAnimating=${this.isAnimating}, currentHotspotId=${this.currentHotspotId}, hasControls=${!!this.controls}`);
+            this.returnToLastPosition();
+        }
+    }
+}
+
 // Animation mixer and clips
 let mixer = null;
 const clipActions = [];
+
+// Create hotspot manager (will be initialized after model loads)
+let hotspotManager = null;
 
 const loader = new GLTFLoader().setPath('./models/');
 const ktx2Loader = new KTX2Loader().setTranscoderPath('./libs/basis/').detectSupport(renderer);
@@ -271,13 +555,29 @@ loader.load('warehouse_exp.glb', (gltf) => {
                 child.receiveShadow = false;
             }
         });
-        console.log('[Shadows] Disabled shadow casting AND receiving for background_assets');
-    } else {
-        console.warn('[Shadows] background_assets object not found');
     }
     
     scene.add(mesh);
     meshLoaded = true;
+    
+    // Set up initial shadow casting for baking
+    // Only static objects (non-animated) will cast shadows to light1
+    // Animated objects excluded from initial bake to avoid shadow artifacts at frame 1 positions
+    console.log('[Shadows] Setting up initial shadow casting for baking');
+    mesh.traverse((child) => {
+        if (child.isMesh) {
+            if (child.name && child.name.startsWith('animated_')) {
+                // Animated objects: will NOT cast shadows initially (excluded from bake)
+                child.castShadow = false;
+                console.log(`[Shadows] Animated object excluded from bake: ${child.name}`);
+            } else {
+                // Static objects: will cast shadows for baking
+                child.castShadow = true;
+                console.log(`[Shadows] Static object will be baked: ${child.name}`);
+            }
+            child.receiveShadow = true;
+        }
+    });
 
     // Set up animations BEFORE updating world matrices
     if (gltf.animations && gltf.animations.length > 0) {
@@ -362,7 +662,7 @@ loader.load('warehouse_exp.glb', (gltf) => {
     }
 
     // Set up pallet turner interaction
-    const palletTurner = gltf.scene.getObjectByName('palletTurner');
+    const palletTurner = gltf.scene.getObjectByName('animated_palletTurner');
     if (palletTurner) {
         palletTurnerSpinState.object = palletTurner;
         
@@ -375,6 +675,41 @@ loader.load('warehouse_exp.glb', (gltf) => {
     } else {
         console.warn('palletTurner object not found in scene');
     }
+
+    // Initialize hotspot manager
+    hotspotManager = new HotspotManager(camera, scene);
+    
+    // Auto-discover and register hotspots (hs1-hs5)
+    console.log('[Hotspots] Starting auto-discovery for hs1-hs5...');
+    for (let i = 1; i <= 5; i++) {
+        const clickGeom = gltf.scene.getObjectByName(`hs${i}_click`);
+        const targetObj = gltf.scene.getObjectByName(`hs${i}_target`);
+        const camPos1 = gltf.scene.getObjectByName(`hs${i}_camPos1`);
+        
+        console.log(`[Hotspots] hs${i} discovery:`, {
+            click: clickGeom ? `found (${clickGeom.type})` : 'MISSING',
+            target: targetObj ? 'found' : 'MISSING',
+            camPos1: camPos1 ? 'found' : 'MISSING'
+        });
+        
+        if (clickGeom && targetObj && camPos1) {
+            hotspotManager.registerHotspot(`hs${i}`, clickGeom, targetObj, camPos1);
+        } else {
+            if (!clickGeom) console.warn(`[Hotspots] hs${i}_click not found`);
+            if (!targetObj) console.warn(`[Hotspots] hs${i}_target not found`);
+            if (!camPos1) console.warn(`[Hotspots] hs${i}_camPos1 not found`);
+        }
+    }
+    console.log('[Hotspots] Auto-discovery complete');
+    
+    // Set controls after hotspot manager is fully initialized
+    // This must be done inside the loader callback since controls exist globally
+    setTimeout(() => {
+        if (hotspotManager && typeof controls !== 'undefined') {
+            hotspotManager.setControls(controls);
+            console.log('[Hotspots] Controls linked to hotspot manager');
+        }
+    }, 0);
         
 });
 
@@ -389,9 +724,10 @@ light1.shadow.camera.top = 35;
 light1.shadow.camera.bottom = -30;
 light1.shadow.camera.near = 1;
 light1.shadow.camera.far = 51;
-light1.shadow.mapSize.width = 1024;
-light1.shadow.mapSize.height = 512;
-light1.shadow.bias = -0.0001
+light1.shadow.mapSize.width = 2048;
+light1.shadow.mapSize.height = 1024;
+light1.shadow.bias = -0.0001;
+light1.shadow.autoUpdate = false;
 
 scene.add(light1);
 
@@ -452,6 +788,16 @@ window.addEventListener('resize', () => {
 let lastFrameTime = 0;
 const targetFrameTime = isMobile ? 17 : 16; // Target 60fps but allow slight variance on mobile
 
+// Shadow update configuration
+const SHADOW_UPDATE_INTERVAL = 2; // Update light shadows every n frames
+let shadowUpdateFrameCounter = 0;
+
+function updateLightShadows() {
+    if (light1) {
+        light1.shadow.needsUpdate = true;
+    }
+}
+
 function render(){    
     const deltaTime = clock.getDelta();
 
@@ -474,7 +820,18 @@ function render(){
         palletTurnerSpinState.object.rotation.y += palletTurnerSpinState.angularVelocity * deltaTime;
     }
 
-    controls.update();
+    // Only update controls if not in a hotspot animation
+    if (!hotspotManager || !hotspotManager.skipControlsUpdate) {
+        controls.update();
+    }
+    
+    // Update light shadows every n frames
+    shadowUpdateFrameCounter++;
+    if (shadowUpdateFrameCounter >= SHADOW_UPDATE_INTERVAL) {
+        updateLightShadows();
+        shadowUpdateFrameCounter = 0;
+    }
+    
     requestAnimationFrame(render);
     if (showPerfMonitor) {
         perfMonitor.recordFrame();
