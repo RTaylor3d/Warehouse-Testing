@@ -477,12 +477,147 @@ class HotspotManager {
     }
 }
 
+// Barrier Animation Manager
+class BarrierAnimationManager {
+    constructor(scene) {
+        this.scene = scene;
+        this.barriers = new Map(); // Map of barrier names to barrier state
+    }
+
+    registerBarrier(barrierId, clickObjectName, animationClipName) {
+        // Get the click object and animation action
+        const clickObj = this.scene.getObjectByName(clickObjectName);
+        
+        if (!clickObj) {
+            console.warn(`[Barriers] Click object not found: ${clickObjectName}`);
+            return false;
+        }
+
+        // Set click object properties: invisible and no shadows
+        clickObj.visible = false;
+        clickObj.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = false;
+                child.receiveShadow = false;
+            }
+        });
+
+        console.log(`[Barriers] Configured click object ${clickObjectName}: hidden, no shadows`);
+
+        // Create barrier state object
+        const barrierState = {
+            barrierId,
+            clickObj,
+            clickObjectName,
+            animationClipName,
+            isAnimating: false,
+            action: null, // Will be set when animation is ready
+            animationStartTime: 0,
+            animationDuration: 0
+        };
+
+        this.barriers.set(barrierId, barrierState);
+
+        // Register click handler
+        this.registerClickHandler(barrierId);
+
+        console.log(`[Barriers] Registered barrier: ${barrierId}`);
+        return true;
+    }
+
+    registerClickHandler(barrierId) {
+        const barrier = this.barriers.get(barrierId);
+        if (!barrier) return;
+
+        const clickObj = barrier.clickObj;
+
+        // Add to interaction manager
+        if (clickObj.geometry) {
+            interactionManager.add(clickObj);
+            clickObj.addEventListener('click', () => this.onClickObject(barrierId));
+        } else {
+            // If group, add children
+            clickObj.traverse((child) => {
+                if (child.isMesh && child.geometry) {
+                    interactionManager.add(child);
+                    child.addEventListener('click', () => this.onClickObject(barrierId));
+                }
+            });
+            // Also add parent
+            interactionManager.add(clickObj);
+            clickObj.addEventListener('click', () => this.onClickObject(barrierId));
+        }
+
+        console.log(`[Barriers] Click handler registered for ${barrierId}`);
+    }
+
+    onClickObject(barrierId) {
+        const barrier = this.barriers.get(barrierId);
+        if (!barrier) return;
+
+        // Ignore click if already animating
+        if (barrier.isAnimating) {
+            console.log(`[Barriers] Click ignored on ${barrierId} - already animating`);
+            return;
+        }
+
+        // Check if animation action is available
+        if (!barrier.action) {
+            console.warn(`[Barriers] No animation action for ${barrierId}`);
+            return;
+        }
+
+        console.log(`[Barriers] Click detected on ${barrierId} - playing animation ${barrier.animationClipName}`);
+
+        // Mark as animating
+        barrier.isAnimating = true;
+
+        // Configure action for single play
+        barrier.action.reset();
+        barrier.action.clampWhenFinished = true; // Clamp to the last frame
+        barrier.action.loop = THREE.LoopOnce; // Play only once
+        
+        // Record animation start time and duration
+        barrier.animationStartTime = clock.getElapsedTime();
+        barrier.animationDuration = barrier.action.getClip().duration;
+        
+        console.log(`[Barriers] Animation started for ${barrierId}, duration: ${barrier.animationDuration.toFixed(2)}s`);
+        
+        barrier.action.play();
+    }
+
+    update() {
+        // Check all barriers for animation completion
+        this.barriers.forEach((barrier) => {
+            if (barrier.isAnimating) {
+                const elapsedTime = clock.getElapsedTime() - barrier.animationStartTime;
+                
+                // Animation is complete when elapsed time exceeds duration
+                if (elapsedTime >= barrier.animationDuration) {
+                    console.log(`[Barriers] Animation finished for ${barrier.barrierId}`);
+                    barrier.isAnimating = false;
+                }
+            }
+        });
+    }
+
+    setAnimationAction(barrierId, action) {
+        const barrier = this.barriers.get(barrierId);
+        if (barrier) {
+            barrier.action = action;
+            console.log(`[Barriers] Animation action set for ${barrierId}`);
+        }
+    }
+}
+
+
 // Animation mixer and clips
 let mixer = null;
-const clipActions = [];
+const clipActions = new Map(); // Map clip names to actions for on-demand playback
 
 // Create hotspot manager (will be initialized after model loads)
 let hotspotManager = null;
+let barrierAnimationManager = null;
 
 const loader = new GLTFLoader().setPath('./models/');
 const ktx2Loader = new KTX2Loader().setTranscoderPath('./libs/basis/').detectSupport(renderer);
@@ -559,34 +694,25 @@ loader.load('warehouse_exp.glb', (gltf) => {
     
     scene.add(mesh);
     meshLoaded = true;
-    
-    // Set up initial shadow casting for baking
-    // Only static objects (non-animated) will cast shadows to light1
-    // Animated objects excluded from initial bake to avoid shadow artifacts at frame 1 positions
-    console.log('[Shadows] Setting up initial shadow casting for baking');
-    mesh.traverse((child) => {
-        if (child.isMesh) {
-            if (child.name && child.name.startsWith('animated_')) {
-                // Animated objects: will NOT cast shadows initially (excluded from bake)
-                child.castShadow = false;
-                console.log(`[Shadows] Animated object excluded from bake: ${child.name}`);
-            } else {
-                // Static objects: will cast shadows for baking
-                child.castShadow = true;
-                console.log(`[Shadows] Static object will be baked: ${child.name}`);
-            }
-            child.receiveShadow = true;
-        }
-    });
 
     // Set up animations BEFORE updating world matrices
     if (gltf.animations && gltf.animations.length > 0) {
         mixer = new THREE.AnimationMixer(gltf.scene);
+        
+        // Barrier animations that should NOT auto-play
+        const nonAutoPlayAnimations = ['barrierL_anim', 'barrierR_anim'];
+        
         gltf.animations.forEach((clip) => {
             const action = mixer.clipAction(clip);
-            action.play();
-            clipActions.push(action);
-            console.log(`[Animation] Playing: ${clip.name}`);
+            clipActions.set(clip.name, action);
+            
+            // Auto-play all animations except barrier animations
+            if (!nonAutoPlayAnimations.includes(clip.name)) {
+                action.play();
+                console.log(`[Animation] Playing: ${clip.name}`);
+            } else {
+                console.log(`[Animation] Registered (manual): ${clip.name}`);
+            }
         });
         console.log(`[Animation] Total animations: ${gltf.animations.length}`);
     } else {
@@ -680,27 +806,37 @@ loader.load('warehouse_exp.glb', (gltf) => {
     hotspotManager = new HotspotManager(camera, scene);
     
     // Auto-discover and register hotspots (hs1-hs5)
-    console.log('[Hotspots] Starting auto-discovery for hs1-hs5...');
     for (let i = 1; i <= 5; i++) {
         const clickGeom = gltf.scene.getObjectByName(`hs${i}_click`);
         const targetObj = gltf.scene.getObjectByName(`hs${i}_target`);
         const camPos1 = gltf.scene.getObjectByName(`hs${i}_camPos1`);
         
-        console.log(`[Hotspots] hs${i} discovery:`, {
-            click: clickGeom ? `found (${clickGeom.type})` : 'MISSING',
-            target: targetObj ? 'found' : 'MISSING',
-            camPos1: camPos1 ? 'found' : 'MISSING'
-        });
-        
         if (clickGeom && targetObj && camPos1) {
             hotspotManager.registerHotspot(`hs${i}`, clickGeom, targetObj, camPos1);
-        } else {
-            if (!clickGeom) console.warn(`[Hotspots] hs${i}_click not found`);
-            if (!targetObj) console.warn(`[Hotspots] hs${i}_target not found`);
-            if (!camPos1) console.warn(`[Hotspots] hs${i}_camPos1 not found`);
         }
     }
-    console.log('[Hotspots] Auto-discovery complete');
+
+    // Initialize barrier animation manager
+    barrierAnimationManager = new BarrierAnimationManager(gltf.scene);
+    
+    // Register barriers with their animations
+    const barriers = [
+        { id: 'barrierLeft', clickObj: 'barrierL_click', animClip: 'barrierL_anim' },
+        { id: 'barrierRight', clickObj: 'barrierR_click', animClip: 'barrierR_anim' }
+    ];
+    
+    barriers.forEach((barrier) => {
+        if (barrierAnimationManager.registerBarrier(barrier.id, barrier.clickObj, barrier.animClip)) {
+            // Get animation action and set it on the barrier
+            const action = clipActions.get(barrier.animClip);
+            if (action) {
+                barrierAnimationManager.setAnimationAction(barrier.id, action);
+                console.log(`[Barriers] Animation action linked for ${barrier.id}`);
+            } else {
+                console.warn(`[Barriers] Animation clip not found: ${barrier.animClip}`);
+            }
+        }
+    });
     
     // Set controls after hotspot manager is fully initialized
     // This must be done inside the loader callback since controls exist globally
@@ -725,7 +861,7 @@ light1.shadow.camera.bottom = -30;
 light1.shadow.camera.near = 1;
 light1.shadow.camera.far = 51;
 light1.shadow.mapSize.width = 2048;
-light1.shadow.mapSize.height = 1024;
+light1.shadow.mapSize.height = 2048;
 light1.shadow.bias = -0.0001;
 light1.shadow.autoUpdate = false;
 
@@ -756,40 +892,12 @@ controls.minPolarAngle = 0.85;
 controls.target = new THREE.Vector3(0, 0, 0);
 controls.update();
 
-/*
-// Post-processing pipeline
-const composer = new EffectComposer(renderer);
-composer.multisampling = renderer.capabilities.isWebGL2 ? 4 : 1; // multisample in post if available
-
-const renderPass = new RenderPass(scene, camera);
-const ssaoPass = new SSAOPass(scene, camera, window.innerWidth, window.innerHeight);
-ssaoPass.kernelRadius = 0.75;
-ssaoPass.minDistance = 0.002;
-ssaoPass.maxDistance = 1;
-//const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.15, 0.5, 0.8);
-const outputPass = new OutputPass();
-composer.addPass(renderPass);
-composer.addPass(ssaoPass);
-//composer.addPass(bloomPass);
-composer.addPass(outputPass);
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight);
-    ssaoPass.setSize(window.innerWidth, window.innerHeight);
-    //bloomPass.setSize(window.innerWidth, window.innerHeight);
-});
-*/
-
 //Render loop
 let lastFrameTime = 0;
 const targetFrameTime = isMobile ? 17 : 16; // Target 60fps but allow slight variance on mobile
 
 // Shadow update configuration
-const SHADOW_UPDATE_INTERVAL = 2; // Update light shadows every n frames
+const SHADOW_UPDATE_INTERVAL = 1; // Update light shadows every n frames
 let shadowUpdateFrameCounter = 0;
 
 function updateLightShadows() {
@@ -804,6 +912,11 @@ function render(){
     // Update animations every frame
     if (mixer) {
         mixer.update(deltaTime);
+    }
+
+    // Update barrier animations (track completion)
+    if (barrierAnimationManager) {
+        barrierAnimationManager.update();
     }
 
     // Update pallet turner spin with deceleration
@@ -837,7 +950,6 @@ function render(){
         perfMonitor.recordFrame();
         updateMetrics();
     }
-    //composer.render();
     renderer.render(scene, camera);
 }
 
