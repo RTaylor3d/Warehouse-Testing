@@ -168,6 +168,28 @@ exportBtn.onclick = () => {
 };
 document.body.appendChild(exportBtn);
 
+// Create return button for hotspots
+const hotspotReturnBtn = document.createElement('button');
+hotspotReturnBtn.textContent = 'Return';
+hotspotReturnBtn.style.position = 'fixed';
+hotspotReturnBtn.style.bottom = '20px';
+hotspotReturnBtn.style.right = '20px';
+hotspotReturnBtn.style.padding = '12px 20px';
+hotspotReturnBtn.style.background = '#333';
+hotspotReturnBtn.style.color = '#fff';
+hotspotReturnBtn.style.border = '1px solid #666';
+hotspotReturnBtn.style.borderRadius = '4px';
+hotspotReturnBtn.style.cursor = 'pointer';
+hotspotReturnBtn.style.fontSize = '14px';
+hotspotReturnBtn.style.zIndex = '10';
+hotspotReturnBtn.style.display = 'none'; // Hidden by default
+hotspotReturnBtn.onclick = () => {
+    if (hotspotManager) {
+        hotspotManager.returnToLastPosition();
+    }
+};
+document.body.appendChild(hotspotReturnBtn);
+
 let updateCounter = 0;
 function updateMetrics() {
     if (!showPerfMonitor) return; // Skip on mobile
@@ -356,9 +378,10 @@ class HotspotManager {
         // Animate to camPos1
         console.log(`[Hotspots] Starting animation to camPos1...`);
         this.animateToCamPos(hotspot.camPos1, 1.5, () => {
-            console.log(`[Hotspots] Arrived at ${id} camPos1. Waiting for R keypress to return...`);
-            this.isAnimating = false; // Allow R key return now
+            console.log(`[Hotspots] Arrived at ${id} camPos1. Waiting for return action...`);
+            this.isAnimating = false; // Allow return now
             this.skipControlsUpdate = false; // Allow controls update again
+            this.showReturnButton(); // Show return button
         });
     }
     
@@ -464,6 +487,8 @@ class HotspotManager {
                 this.isAnimating = false;
                 this.currentHotspotId = null;
                 
+                this.hideReturnButton(); // Hide return button
+                
                 console.log('[Hotspots] Camera returned, controls re-enabled, hotspots re-enabled');
             }
         });
@@ -473,6 +498,20 @@ class HotspotManager {
         if (event.key.toLowerCase() === 'r') {
             console.log(`[Hotspots] R key pressed - attempting return. isAnimating=${this.isAnimating}, currentHotspotId=${this.currentHotspotId}, hasControls=${!!this.controls}`);
             this.returnToLastPosition();
+        }
+    }
+
+    showReturnButton() {
+        if (hotspotReturnBtn) {
+            hotspotReturnBtn.style.display = 'block';
+            console.log('[Hotspots] Return button shown');
+        }
+    }
+
+    hideReturnButton() {
+        if (hotspotReturnBtn) {
+            hotspotReturnBtn.style.display = 'none';
+            console.log('[Hotspots] Return button hidden');
         }
     }
 }
@@ -802,6 +841,36 @@ loader.load('warehouse_exp.glb', (gltf) => {
         console.warn('palletTurner object not found in scene');
     }
 
+    // Set up video texture for laptop screen
+    const laptopScreen = gltf.scene.getObjectByName('laptopScreen1');
+    if (laptopScreen && laptopScreen.isMesh) {
+        // Create video element
+        const video = document.createElement('video');
+        video.src = './videos/laptop_rageMan_looped.mp4';
+        video.crossOrigin = 'anonymous';
+        video.loop = true;
+        video.muted = true;
+        video.playsinline = true;
+        
+        // Create texture from video
+        const videoTexture = new THREE.VideoTexture(video);
+        videoTexture.flipY = false;
+        videoTexture.colorSpace = THREE.SRGBColorSpace;
+        
+        // Create unlit material (MeshBasicMaterial) - no color, just the video
+        laptopScreen.material.map = videoTexture;
+        laptopScreen.material.needsUpdate = true;
+        
+        // Play video
+        video.play().catch(err => {
+            console.warn('[Video] Autoplay failed, video will play on first interaction:', err);
+        });
+        
+        console.log('[Video] Laptop screen texture initialized (unlit material)');
+    } else {
+        console.warn('laptopScreen1 object not found in scene');
+    }
+
     // Initialize hotspot manager
     hotspotManager = new HotspotManager(camera, scene);
     
@@ -861,7 +930,7 @@ light1.shadow.camera.bottom = -30;
 light1.shadow.camera.near = 1;
 light1.shadow.camera.far = 51;
 light1.shadow.mapSize.width = 2048;
-light1.shadow.mapSize.height = 2048;
+light1.shadow.mapSize.height = 1024;
 light1.shadow.bias = -0.0001;
 light1.shadow.autoUpdate = false;
 
@@ -897,7 +966,7 @@ let lastFrameTime = 0;
 const targetFrameTime = isMobile ? 17 : 16; // Target 60fps but allow slight variance on mobile
 
 // Shadow update configuration
-const SHADOW_UPDATE_INTERVAL = 1; // Update light shadows every n frames
+const SHADOW_UPDATE_INTERVAL = 2; // Update light shadows every n frames
 let shadowUpdateFrameCounter = 0;
 
 function updateLightShadows() {
