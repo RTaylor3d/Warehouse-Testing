@@ -31,7 +31,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.VSMShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.4;
+renderer.toneMappingExposure = 1.3;
 document.body.appendChild(renderer.domElement);
 
 // Advanced performance monitoring
@@ -206,7 +206,7 @@ function updateMetrics() {
 const scene = new THREE.Scene();
 const environmentTexture = new THREE.CubeTextureLoader().setPath('./env/').load(['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png']);
 scene.environment = environmentTexture;
-scene.environmentIntensity = 1.1;
+scene.environmentIntensity = 1.5;
 
 // Add white fog
 const fogColor = 0xffffff;
@@ -871,6 +871,66 @@ loader.load('warehouse_exp.glb', (gltf) => {
         console.warn('laptopScreen1 object not found in scene');
     }
 
+    // Set up video texture for animated monitor 1
+    const animatedMonitor1 = gltf.scene.getObjectByName('animatedMonitor1');
+    if (animatedMonitor1 && animatedMonitor1.isMesh) {
+        // Create video element
+        const video1 = document.createElement('video');
+        video1.src = './videos/LT_screens_256x128.mp4';
+        video1.crossOrigin = 'anonymous';
+        video1.loop = true;
+        video1.muted = true;
+        video1.playsinline = true;
+        
+        // Create texture from video
+        const videoTexture1 = new THREE.VideoTexture(video1);
+        videoTexture1.flipY = false;
+        videoTexture1.colorSpace = THREE.SRGBColorSpace;
+        
+        // Apply to material
+        animatedMonitor1.material.map = videoTexture1;
+        animatedMonitor1.material.needsUpdate = true;
+        
+        // Play video
+        video1.play().catch(err => {
+            console.warn('[Video] Autoplay failed for animatedMonitor1, video will play on first interaction:', err);
+        });
+        
+        console.log('[Video] Animated monitor 1 texture initialized');
+    } else {
+        console.warn('animatedMonitor1 object not found in scene');
+    }
+
+    // Set up video texture for animated monitor 2
+    const animatedMonitor2 = gltf.scene.getObjectByName('animatedMonitor2');
+    if (animatedMonitor2 && animatedMonitor2.isMesh) {
+        // Create video element
+        const video2 = document.createElement('video');
+        video2.src = './videos/sol_screen_256x128.mp4';
+        video2.crossOrigin = 'anonymous';
+        video2.loop = true;
+        video2.muted = true;
+        video2.playsinline = true;
+        
+        // Create texture from video
+        const videoTexture2 = new THREE.VideoTexture(video2);
+        videoTexture2.flipY = false;
+        videoTexture2.colorSpace = THREE.SRGBColorSpace;
+        
+        // Apply to material
+        animatedMonitor2.material.map = videoTexture2;
+        animatedMonitor2.material.needsUpdate = true;
+        
+        // Play video
+        video2.play().catch(err => {
+            console.warn('[Video] Autoplay failed for animatedMonitor2, video will play on first interaction:', err);
+        });
+        
+        console.log('[Video] Animated monitor 2 texture initialized');
+    } else {
+        console.warn('animatedMonitor2 object not found in scene');
+    }
+
     // Initialize hotspot manager
     hotspotManager = new HotspotManager(camera, scene);
     
@@ -966,7 +1026,7 @@ let lastFrameTime = 0;
 const targetFrameTime = isMobile ? 17 : 16; // Target 60fps but allow slight variance on mobile
 
 // Shadow update configuration
-const SHADOW_UPDATE_INTERVAL = 2; // Update light shadows every n frames
+const SHADOW_UPDATE_INTERVAL = 1; // Update light shadows every n frames
 let shadowUpdateFrameCounter = 0;
 
 function updateLightShadows() {
