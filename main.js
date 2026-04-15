@@ -990,7 +990,7 @@ light1.shadow.camera.bottom = -30;
 light1.shadow.camera.near = 1;
 light1.shadow.camera.far = 51;
 light1.shadow.mapSize.width = 2048;
-light1.shadow.mapSize.height = 1024;
+light1.shadow.mapSize.height = 2048;
 light1.shadow.bias = -0.0001;
 light1.shadow.autoUpdate = false;
 
