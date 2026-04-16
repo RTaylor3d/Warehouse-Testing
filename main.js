@@ -16,7 +16,6 @@ let palletTurnerSpinState = {
     deceleration: 5 // deceleration factor (radians per second squared)
 };
 
-
 // Set up Renderer
 // Disable antialias on mobile to reduce GPU pressure and memory allocation
 const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
@@ -276,6 +275,12 @@ class HotspotManager {
                 console.log(`[Hotspots] Click detected on ${id}`);
                 this.activateHotspot(id);
             });
+            clickGeometry.addEventListener('mouseover', () => {
+                renderer.domElement.style.cursor = 'pointer';
+            });
+            clickGeometry.addEventListener('mouseout', () => {
+                renderer.domElement.style.cursor = 'default';
+            });
         } else {
             // If it's a group/empty object, try to add all mesh children
             clickGeometry.traverse((child) => {
@@ -289,6 +294,12 @@ class HotspotManager {
                         console.log(`[Hotspots] Click detected on ${id} (via child mesh)`);
                         this.activateHotspot(id);
                     });
+                    child.addEventListener('mouseover', () => {
+                        renderer.domElement.style.cursor = 'pointer';
+                    });
+                    child.addEventListener('mouseout', () => {
+                        renderer.domElement.style.cursor = 'default';
+                    });
                 }
             });
             
@@ -301,6 +312,12 @@ class HotspotManager {
                 }
                 console.log(`[Hotspots] Click detected on ${id} (via parent)`);
                 this.activateHotspot(id);
+            });
+            clickGeometry.addEventListener('mouseover', () => {
+                renderer.domElement.style.cursor = 'pointer';
+            });
+            clickGeometry.addEventListener('mouseout', () => {
+                renderer.domElement.style.cursor = 'default';
             });
         }
         
@@ -574,17 +591,35 @@ class BarrierAnimationManager {
         if (clickObj.geometry) {
             interactionManager.add(clickObj);
             clickObj.addEventListener('click', () => this.onClickObject(barrierId));
+            clickObj.addEventListener('mouseover', () => {
+                renderer.domElement.style.cursor = 'pointer';
+            });
+            clickObj.addEventListener('mouseout', () => {
+                renderer.domElement.style.cursor = 'default';
+            });
         } else {
             // If group, add children
             clickObj.traverse((child) => {
                 if (child.isMesh && child.geometry) {
                     interactionManager.add(child);
                     child.addEventListener('click', () => this.onClickObject(barrierId));
+                    child.addEventListener('mouseover', () => {
+                        renderer.domElement.style.cursor = 'pointer';
+                    });
+                    child.addEventListener('mouseout', () => {
+                        renderer.domElement.style.cursor = 'default';
+                    });
                 }
             });
             // Also add parent
             interactionManager.add(clickObj);
             clickObj.addEventListener('click', () => this.onClickObject(barrierId));
+            clickObj.addEventListener('mouseover', () => {
+                renderer.domElement.style.cursor = 'pointer';
+            });
+            clickObj.addEventListener('mouseout', () => {
+                renderer.domElement.style.cursor = 'default';
+            });
         }
 
         console.log(`[Barriers] Click handler registered for ${barrierId}`);
@@ -719,6 +754,7 @@ loader.load('warehouse_exp.glb', (gltf) => {
     });
 
     const mesh = gltf.scene;
+
     
     // Disable shadows on background_assets AFTER global enable, traversing all children
     const bgAssets = mesh.getObjectByName('background_assets');
@@ -836,6 +872,12 @@ loader.load('warehouse_exp.glb', (gltf) => {
         palletTurner.addEventListener('click', () => {
             // Apply initial spin velocity (3 rotations per second)
             palletTurnerSpinState.angularVelocity = Math.PI * 3;
+        });
+        palletTurner.addEventListener('mouseover', () => {
+            renderer.domElement.style.cursor = 'pointer';
+        });
+        palletTurner.addEventListener('mouseout', () => {
+            renderer.domElement.style.cursor = 'default';
         });
     } else {
         console.warn('palletTurner object not found in scene');
@@ -1080,6 +1122,7 @@ function render(){
         updateMetrics();
     }
     renderer.render(scene, camera);
+    interactionManager.update();
 }
 
 render();
